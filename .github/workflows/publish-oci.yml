@@ -53,16 +53,18 @@ jobs:
         if: matrix.os == 'darwin'
         run: brew install perl || true
 
+      # pwsh on all OSes — Git Bash on Windows mangles $GITHUB_OUTPUT paths.
       - name: Resolve OpenSSL version
         id: ver
-        shell: bash
+        shell: pwsh
         run: |
-          V="${{ inputs.version }}"
-          if [ -z "$V" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
-            V="${GITHUB_REF_NAME#v}"
-          fi
-          [ -z "$V" ] && V="${OPENSSL_VERSION_DEFAULT}"
-          echo "version=$V" >> "$GITHUB_OUTPUT"
+          $V = "${{ inputs.version }}"
+          if ([string]::IsNullOrEmpty($V) -and $env:GITHUB_REF_NAME -like 'v*') {
+            $V = $env:GITHUB_REF_NAME.Substring(1)
+          }
+          if ([string]::IsNullOrEmpty($V)) { $V = $env:OPENSSL_VERSION_DEFAULT }
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "version=$V"
+          Write-Host "OpenSSL/package version=$V"
 
       - name: Build OpenSSL shared libs (Unix)
         if: matrix.os != 'windows'
