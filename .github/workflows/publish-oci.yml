@@ -92,12 +92,31 @@ jobs:
           [ -z "$V" ] && V="${OPENSSL_VERSION_DEFAULT}"
           echo "version=$V" >> "$GITHUB_OUTPUT"
 
+  prepare-source:
+    needs: resolve-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync package version into source
+        run: |
+          chmod +x scripts/sync-package-version.sh
+          ./scripts/sync-package-version.sh "${{ needs.resolve-version.outputs.version }}"
+
+      - name: Upload synced source overlay
+        uses: actions/upload-artifact@v4
+        with:
+          name: synced-source
+          path: |
+            cl-stack-ssl.asd
+            src
+
   publish:
-    needs: [build, resolve-version]
+    needs: [build, resolve-version, prepare-source]
     permissions:
       contents: read
       packages: write
-    uses: egao1980/cl-repository/.github/workflows/publish-native-package.yml@main
+    uses: ./.github/workflows/publish-native-package.yml
     with:
       package-name: cl-stack-ssl
       version: ${{ needs.resolve-version.outputs.version }}
