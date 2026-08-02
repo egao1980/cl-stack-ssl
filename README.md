@@ -40,7 +40,7 @@ Tag `v<openssl-ver>` or `workflow_dispatch` → `.github/workflows/publish-oci.y
 | `darwin/arm64` | `macos-latest` |
 | `windows/amd64` | self-hosted `[self-hosted, Windows, X64, overlay]` |
 
-Windows build: `scripts/build-openssl.ps1` (VS Build Tools + Strawberry Perl).
+Windows build: `scripts/build-openssl.ps1` (VS Build Tools + Strawberry Perl via `winget` in CI).
 
 Policy: [cl-stack overlays](https://github.com/egao1980/cl-stack/blob/main/docs/overlays.md),
 [overlay CI](https://github.com/egao1980/cl-stack/blob/main/docs/overlay-ci.md).

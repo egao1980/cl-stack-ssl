@@ -41,8 +41,13 @@ if (Test-Path $vswhere) {
   }
 }
 
+foreach ($p in @("C:\Strawberry\perl\bin", "C:\Strawberry\c\bin")) {
+  if ((Test-Path $p) -and ($env:Path -notlike "*$p*")) {
+    $env:Path = "$p;$env:Path"
+  }
+}
 if (-not (Get-Command perl -ErrorAction SilentlyContinue)) {
-  throw "perl not found (install Strawberry Perl)"
+  throw "perl not found (winget install -e --id StrawberryPerl.StrawberryPerl)"
 }
 if (-not (Get-Command nmake -ErrorAction SilentlyContinue)) {
   throw "nmake not found (install VS Build Tools with C++ tools)"
