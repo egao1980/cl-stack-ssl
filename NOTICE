@@ -1,0 +1,4 @@
+cl-stack-ssl bundles OpenSSL shared libraries built from upstream OpenSSL sources
+(https://github.com/openssl/openssl). OpenSSL is licensed under Apache License 2.0.
+
+OpenSSL copyright: The OpenSSL Project Authors. All Rights Reserved.

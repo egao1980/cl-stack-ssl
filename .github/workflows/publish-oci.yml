@@ -1,0 +1,254 @@
+# Parallel build OpenSSL shared libs + atomic OCI publish (universal + overlays).
+name: Publish OCI Package
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package / OpenSSL version (default: from tag or 3.4.1)"
+        required: false
+        default: ""
+      registry:
+        description: "OCI registry (default: ghcr.io)"
+        required: false
+        default: ""
+
+env:
+  DEFAULT_REGISTRY: ghcr.io
+  OPENSSL_VERSION_DEFAULT: "3.4.1"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            runner: ubuntu-latest
+          - os: linux
+            arch: arm64
+            runner: ubuntu-24.04-arm64
+          - os: darwin
+            arch: arm64
+            runner: macos-latest
+          # windows/amd64: add windows-latest or self-hosted when ready
+          # - os: windows
+          #   arch: amd64
+          #   runner: windows-latest
+
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl perl patchelf
+
+      - name: Install build deps (macOS)
+        if: matrix.os == 'darwin'
+        run: brew install perl || true
+
+      - name: Build OpenSSL shared libs
+        env:
+          OPENSSL_VERSION: ${{ inputs.version || env.OPENSSL_VERSION_DEFAULT }}
+        run: |
+          # Tag v3.4.1 → version 3.4.1 when inputs.version empty on tag push
+          if [ -z "${{ inputs.version }}" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            export OPENSSL_VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          chmod +x scripts/build-openssl.sh
+          ./scripts/build-openssl.sh
+          mkdir -p native-bundle
+          cp -a "lib/${{ matrix.os }}-${{ matrix.arch }}/." native-bundle/
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.os }}-${{ matrix.arch }}
+          path: native-bundle/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: native-artifacts/
+
+      - name: Arrange overlay directories
+        run: |
+          : > /tmp/platforms.txt
+          for dir in native-artifacts/native-*; do
+            [ -d "$dir" ] || continue
+            slug=$(basename "$dir" | sed 's/^native-//')
+            os=$(echo "$slug" | cut -d- -f1)
+            arch=$(echo "$slug" | cut -d- -f2)
+            target="lib/${os}-${arch}"
+            mkdir -p "$target"
+            cp -a "$dir"/. "$target/"
+            echo "${os}/${arch}" >> /tmp/platforms.txt
+          done
+          echo "Platforms:"; cat /tmp/platforms.txt
+          find lib/ -type f -o -type l | head -50
+
+      - name: Install SBCL
+        run: sudo apt-get update && sudo apt-get install -y sbcl
+
+      - name: Install Quicklisp
+        run: |
+          curl -o /tmp/quicklisp.lisp https://beta.quicklisp.org/quicklisp.lisp
+          sbcl --noinform --non-interactive \
+            --load /tmp/quicklisp.lisp \
+            --eval '(quicklisp-quickstart:install :path #p"~/quicklisp/")'
+          sbcl --noinform --non-interactive \
+            --load ~/quicklisp/setup.lisp \
+            --eval '(ql-util:without-prompting (ql:add-to-init-file))'
+
+      - name: Install oras
+        uses: oras-project/setup-oras@v1
+        with:
+          version: 1.2.3
+
+      - name: Pull cl-repository-packager from GHCR
+        run: |
+          CL_REPO_TAG="0.8.0"
+          CL_REPO_IMAGE="ghcr.io/egao1980/cl-repository/cl-repository-packager"
+          rm -rf /tmp/cl-repo-pull
+          mkdir -p /tmp/cl-repo-pull ~/.local/share/cl-systems
+          rm -rf ~/.local/share/cl-systems/cl-oci-*
+          oras pull "${CL_REPO_IMAGE}:${CL_REPO_TAG}" -o /tmp/cl-repo-pull/
+          for f in /tmp/cl-repo-pull/*.tar.gz; do
+            tar -xzf "$f" -C ~/.local/share/cl-systems/
+          done
+
+      - name: Stage Lisp-only source tree
+        run: |
+          # Lisp sources only in source-dir; natives referenced by absolute path for overlays.
+          STAGING="${RUNNER_TEMP}/cl-stack-ssl-src"
+          rm -rf "$STAGING"
+          mkdir -p "$STAGING/src"
+          cp LICENSE NOTICE README.md cl-stack-ssl.asd "$STAGING/"
+          cp -a src/. "$STAGING/src/"
+          echo "STAGING=$STAGING" >> "$GITHUB_ENV"
+          echo "LIB_ROOT=${GITHUB_WORKSPACE}/lib" >> "$GITHUB_ENV"
+
+      - name: Build and publish OCI package
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REGISTRY="${{ inputs.registry || env.DEFAULT_REGISTRY }}"
+          VERSION="${{ inputs.version }}"
+          if [ -z "$VERSION" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          [ -z "$VERSION" ] && VERSION="${OPENSSL_VERSION_DEFAULT}"
+          NAMESPACE="${{ github.repository_owner }}/cl-systems"
+          NAMESPACE=$(echo "$NAMESPACE" | tr '[:upper:]' '[:lower:]')
+
+          if [ "$REGISTRY" = "ghcr.io" ]; then
+            REGISTRY_URL="https://${REGISTRY}"
+          else
+            REGISTRY_URL="http://${REGISTRY}"
+          fi
+
+          cat > /tmp/publish.lisp <<'LISP'
+          (require :asdf)
+          (asdf:initialize-source-registry
+            '(:source-registry
+              (:tree (:home ".local/share/cl-systems/"))
+              :inherit-configuration))
+          (load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))
+          (ql:quickload :cl-repository-packager)
+
+          (defun absolute-native-files (lib-dir)
+            "Return ((absolute-path-string . dest-name) ...) via uiop:directory-files."
+            (let ((files (uiop:directory-files lib-dir)))
+              (unless files
+                (error "No native files under ~a" lib-dir))
+              (loop for abs in files
+                    collect (cons (namestring abs) (file-namestring abs)))))
+
+          (let* ((version (uiop:getenv "PKG_VERSION"))
+                 (registry-url (uiop:getenv "REGISTRY_URL"))
+                 (namespace (uiop:getenv "OCI_NAMESPACE"))
+                 (source-dir (uiop:ensure-directory-pathname (uiop:getenv "PKG_SOURCE_DIR")))
+                 (lib-root (uiop:ensure-directory-pathname (uiop:getenv "LIB_ROOT")))
+                 (use-auth (string= "ghcr.io" (uiop:getenv "OCI_REGISTRY")))
+                 (auth (when use-auth
+                         (cl-oci-client/auth:make-auth-config
+                           :username (uiop:getenv "GITHUB_ACTOR")
+                           :password (uiop:getenv "GITHUB_TOKEN"))))
+                 (reg (if use-auth
+                          (cl-oci-client/registry:make-registry registry-url :auth auth)
+                          (cl-oci-client/registry:make-registry registry-url)))
+                 (platform-lines (uiop:read-file-lines "/tmp/platforms.txt"))
+                 (overlays
+                   (loop for line in platform-lines
+                         for slash = (position #\/ line)
+                         when slash
+                         collect
+                         (let* ((os (subseq line 0 slash))
+                                (arch (subseq line (1+ slash)))
+                                (prefix (format nil "~a-~a" os arch))
+                                (lib-dir (merge-pathnames
+                                          (format nil "~a/" prefix)
+                                          lib-root))
+                                (file-pairs (absolute-native-files lib-dir)))
+                           (make-instance 'cl-repository-packager/build-matrix:overlay-spec
+                             :os os :arch arch
+                             :layers
+                             (list
+                               (list :role "native-library"
+                                     :files file-pairs))))))
+                 (spec (make-instance 'cl-repository-packager/build-matrix:package-spec
+                         :name "cl-stack-ssl"
+                         :version version
+                         :source-dir source-dir
+                         :license "MIT"
+                         :description "OpenSSL native overlays for cl-stack; depends on stock cl+ssl"
+                         :depends-on '("cl+ssl")
+                         :provides '("cl-stack-ssl")
+                         :cffi-libraries '("libssl" "libcrypto")
+                         :overlays overlays))
+                 (result (cl-repository-packager/build-matrix:build-package spec)))
+            (format t "~%Overlays: ~{~a~^, ~}~%" platform-lines)
+            (cl-repository-packager/publisher:publish-package
+              reg namespace version result spec :skip-catalog t)
+            (format t "Published cl-stack-ssl:~a to ~a/~a~%" version registry-url namespace))
+          LISP
+
+          PKG_VERSION="$VERSION" \
+          OCI_REGISTRY="$REGISTRY" \
+          REGISTRY_URL="$REGISTRY_URL" \
+          GITHUB_ACTOR="${{ github.actor }}" \
+          OCI_NAMESPACE="$NAMESPACE" \
+          PKG_SOURCE_DIR="$STAGING" \
+          LIB_ROOT="$LIB_ROOT" \
+          sbcl --noinform --non-interactive --load /tmp/publish.lisp
+
+      - name: Verify published artifact
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REGISTRY="${{ inputs.registry || env.DEFAULT_REGISTRY }}"
+          VERSION="${{ inputs.version }}"
+          if [ -z "$VERSION" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          [ -z "$VERSION" ] && VERSION="${OPENSSL_VERSION_DEFAULT}"
+          NAMESPACE="${{ github.repository_owner }}/cl-systems"
+          NAMESPACE=$(echo "$NAMESPACE" | tr '[:upper:]' '[:lower:]')
+          oras manifest fetch "${REGISTRY}/${NAMESPACE}/cl-stack-ssl:${VERSION}" \
+            --registry-config <(echo "{\"auths\":{\"ghcr.io\":{\"username\":\"${{ github.actor }}\",\"password\":\"${GITHUB_TOKEN}\"}}}")
