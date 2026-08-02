@@ -76,12 +76,46 @@ jobs:
           mkdir -p native-bundle
           cp -a "lib/${{ matrix.os }}-${{ matrix.arch }}/." native-bundle/
 
+      - name: Install Strawberry Perl (Windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          if (Get-Command perl -ErrorAction SilentlyContinue) {
+            perl -v | Select-Object -First 2
+            return
+          }
+          if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+            throw "winget not found; install App Installer / Strawberry Perl manually"
+          }
+          winget install -e --id StrawberryPerl.StrawberryPerl `
+            --accept-package-agreements --accept-source-agreements --disable-interactivity
+          # Refresh PATH for this job (service runners often miss new Machine PATH).
+          $machine = [Environment]::GetEnvironmentVariable("Path", "Machine")
+          $user = [Environment]::GetEnvironmentVariable("Path", "User")
+          $env:Path = "$machine;$user"
+          foreach ($p in @(
+            "C:\Strawberry\perl\bin",
+            "C:\Strawberry\c\bin"
+          )) {
+            if ((Test-Path $p) -and ($env:Path -notlike "*$p*")) {
+              $env:Path = "$p;$env:Path"
+            }
+          }
+          Get-Command perl | Format-List
+          perl -v | Select-Object -First 2
+
       - name: Build OpenSSL shared libs (Windows)
         if: matrix.os == 'windows'
         shell: pwsh
         env:
           OPENSSL_VERSION: ${{ steps.ver.outputs.version }}
         run: |
+          # Ensure Strawberry is visible even if install step was a no-op / cached.
+          foreach ($p in @("C:\Strawberry\perl\bin", "C:\Strawberry\c\bin")) {
+            if ((Test-Path $p) -and ($env:Path -notlike "*$p*")) {
+              $env:Path = "$p;$env:Path"
+            }
+          }
           .\scripts\build-openssl.ps1
           New-Item -ItemType Directory -Force -Path native-bundle | Out-Null
           Copy-Item -Path "lib\${{ matrix.os }}-${{ matrix.arch }}\*" -Destination native-bundle -Recurse -Force
