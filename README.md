@@ -16,9 +16,11 @@ depends on stock [cl+ssl](https://github.com/cl-plus-ssl/cl-plus-ssl) for the Li
 
 ```lisp
 ;; After cl-repository install (init pushes native/ onto CFFI search path):
-(asdf:load-system "cl-stack-ssl")   ; pulls in cl+ssl
-(cl-stack-ssl:ensure-ssl)
+(asdf:load-system "cl-stack-ssl")   ; pulls stock cl+ssl — no extra ensure call
+;; then use cl+ssl as usual
 ```
+
+Optional diagnostic: `(cl-stack-ssl:ensure-ssl)` → `(values t "3.4.1")`.
 
 Clean container: Roswell/SBCL, **no** `libssl-dev` — install from GHCR, then load.
 If the image already has distro `libssl` (common), put the package `native/` on
