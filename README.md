@@ -16,11 +16,21 @@ depends on stock [cl+ssl](https://github.com/cl-plus-ssl/cl-plus-ssl) for the Li
 
 ```lisp
 ;; After cl-repository install (init pushes native/ onto CFFI search path):
-(asdf:load-system "cl-stack-ssl")   ; pulls in cl+ssl
-(cl-stack-ssl:ensure-ssl)
+(asdf:load-system "cl-stack-ssl")   ; pulls stock cl+ssl — no extra ensure call
+;; then use cl+ssl as usual
 ```
 
-Clean container: Roswell/SBCL, **no** OpenSSL/dev packages — install from GHCR, then load.
+Optional diagnostic: `(cl-stack-ssl:ensure-ssl)` → `(values t "3.4.1")`.
+
+Clean container: Roswell/SBCL, **no** `libssl-dev` — install from GHCR, then load.
+If the image already has distro `libssl` (common), put the package `native/` on
+`LD_LIBRARY_PATH` **before** starting SBCL so cl+ssl does not bind the system lib:
+
+```bash
+export LD_LIBRARY_PATH="$HOME/.local/share/cl-systems/cl-stack-ssl-3.4.1/native${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+```
+
+Smoke (linux/amd64): `scripts/smoke-clean-container.sh` (expects `oras` + Docker).
 
 ## Build natives locally
 
