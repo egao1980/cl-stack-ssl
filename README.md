@@ -20,7 +20,15 @@ depends on stock [cl+ssl](https://github.com/cl-plus-ssl/cl-plus-ssl) for the Li
 (cl-stack-ssl:ensure-ssl)
 ```
 
-Clean container: Roswell/SBCL, **no** OpenSSL/dev packages — install from GHCR, then load.
+Clean container: Roswell/SBCL, **no** `libssl-dev` — install from GHCR, then load.
+If the image already has distro `libssl` (common), put the package `native/` on
+`LD_LIBRARY_PATH` **before** starting SBCL so cl+ssl does not bind the system lib:
+
+```bash
+export LD_LIBRARY_PATH="$HOME/.local/share/cl-systems/cl-stack-ssl-3.4.1/native${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+```
+
+Smoke (linux/amd64): `scripts/smoke-clean-container.sh` (expects `oras` + Docker).
 
 ## Build natives locally
 
