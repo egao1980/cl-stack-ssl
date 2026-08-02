@@ -7,4 +7,4 @@ VERSION="${1:?version required}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 sed -i 's/:version "[^"]*"/:version "'"${VERSION}"'"/' "$ROOT/cl-stack-ssl.asd"
-sed -i 's/(defconstant +openssl-version+ "[^"]*"/(defconstant +openssl-version+ "'"${VERSION}"'"/' "$ROOT/src/setup.lisp"
+sed -i 's/(defparameter +openssl-version+ "[^"]*"/(defparameter +openssl-version+ "'"${VERSION}"'"/' "$ROOT/src/setup.lisp"
