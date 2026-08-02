@@ -32,8 +32,15 @@ Clean container: Roswell/SBCL, **no** OpenSSL/dev packages — install from GHCR
 ## Publish
 
 Tag `v<openssl-ver>` or `workflow_dispatch` → `.github/workflows/publish-oci.yml`
-(matrix: `linux/amd64`, `linux/arm64`, `darwin/arm64`; `windows/amd64` when a
-self-hosted or `windows-latest` build is wired).
+
+| Platform | Runner |
+|----------|--------|
+| `linux/amd64` | `ubuntu-latest` |
+| `linux/arm64` | `ubuntu-24.04-arm` |
+| `darwin/arm64` | `macos-latest` |
+| `windows/amd64` | self-hosted `[self-hosted, Windows, X64, overlay]` |
+
+Windows build: `scripts/build-openssl.ps1` (VS Build Tools + Strawberry Perl).
 
 Policy: [cl-stack overlays](https://github.com/egao1980/cl-stack/blob/main/docs/overlays.md),
 [overlay CI](https://github.com/egao1980/cl-stack/blob/main/docs/overlay-ci.md).

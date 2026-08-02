@@ -1,4 +1,4 @@
-# Build OpenSSL shared libs (matrix) + publish via cl-repository reusable workflow.
+# Build OpenSSL shared libs (matrix) + publish via local reusable workflow.
 name: Publish OCI Package
 
 on:
@@ -21,21 +21,23 @@ env:
 jobs:
   build:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
           - os: linux
             arch: amd64
             runner: ubuntu-latest
+          # Hosted Linux ARM label is ubuntu-24.04-arm (not -arm64).
           - os: linux
             arch: arm64
-            runner: ubuntu-24.04-arm64
+            runner: ubuntu-24.04-arm
           - os: darwin
             arch: arm64
             runner: macos-latest
-          # - os: windows
-          #   arch: amd64
-          #   runner: windows-latest
+          # Self-hosted Windows worker (labels from Install-GhaRunner.ps1).
+          - os: windows
+            arch: amd64
+            runner: [self-hosted, Windows, X64, overlay]
 
     runs-on: ${{ matrix.runner }}
     steps:
@@ -62,7 +64,8 @@ jobs:
           [ -z "$V" ] && V="${OPENSSL_VERSION_DEFAULT}"
           echo "version=$V" >> "$GITHUB_OUTPUT"
 
-      - name: Build OpenSSL shared libs
+      - name: Build OpenSSL shared libs (Unix)
+        if: matrix.os != 'windows'
         env:
           OPENSSL_VERSION: ${{ steps.ver.outputs.version }}
         run: |
@@ -70,6 +73,16 @@ jobs:
           ./scripts/build-openssl.sh
           mkdir -p native-bundle
           cp -a "lib/${{ matrix.os }}-${{ matrix.arch }}/." native-bundle/
+
+      - name: Build OpenSSL shared libs (Windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        env:
+          OPENSSL_VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          .\scripts\build-openssl.ps1
+          New-Item -ItemType Directory -Force -Path native-bundle | Out-Null
+          Copy-Item -Path "lib\${{ matrix.os }}-${{ matrix.arch }}\*" -Destination native-bundle -Recurse -Force
 
       - name: Upload native artifact
         uses: actions/upload-artifact@v4
