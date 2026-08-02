@@ -1,0 +1,135 @@
+# Build OpenSSL shared libs (matrix) + publish via cl-repository reusable workflow.
+name: Publish OCI Package
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package / OpenSSL version (default: from tag or 3.4.1)"
+        required: false
+        default: ""
+      registry:
+        description: "OCI registry (default: ghcr.io)"
+        required: false
+        default: "ghcr.io"
+
+env:
+  OPENSSL_VERSION_DEFAULT: "3.4.1"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            runner: ubuntu-latest
+          - os: linux
+            arch: arm64
+            runner: ubuntu-24.04-arm64
+          - os: darwin
+            arch: arm64
+            runner: macos-latest
+          # - os: windows
+          #   arch: amd64
+          #   runner: windows-latest
+
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl perl patchelf
+
+      - name: Install build deps (macOS)
+        if: matrix.os == 'darwin'
+        run: brew install perl || true
+
+      - name: Resolve OpenSSL version
+        id: ver
+        shell: bash
+        run: |
+          V="${{ inputs.version }}"
+          if [ -z "$V" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            V="${GITHUB_REF_NAME#v}"
+          fi
+          [ -z "$V" ] && V="${OPENSSL_VERSION_DEFAULT}"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Build OpenSSL shared libs
+        env:
+          OPENSSL_VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          chmod +x scripts/build-openssl.sh
+          ./scripts/build-openssl.sh
+          mkdir -p native-bundle
+          cp -a "lib/${{ matrix.os }}-${{ matrix.arch }}/." native-bundle/
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.os }}-${{ matrix.arch }}
+          path: native-bundle/
+
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - id: ver
+        shell: bash
+        run: |
+          V="${{ inputs.version }}"
+          if [ -z "$V" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            V="${GITHUB_REF_NAME#v}"
+          fi
+          [ -z "$V" ] && V="${OPENSSL_VERSION_DEFAULT}"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+  prepare-source:
+    needs: resolve-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync package version into source
+        run: |
+          chmod +x scripts/sync-package-version.sh
+          ./scripts/sync-package-version.sh "${{ needs.resolve-version.outputs.version }}"
+
+      - name: Upload synced source overlay
+        uses: actions/upload-artifact@v4
+        with:
+          name: synced-source
+          path: |
+            cl-stack-ssl.asd
+            src
+
+  publish:
+    needs: [build, resolve-version, prepare-source]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-native-package.yml
+    with:
+      package-name: cl-stack-ssl
+      version: ${{ needs.resolve-version.outputs.version }}
+      registry: ${{ inputs.registry || 'ghcr.io' }}
+      description: OpenSSL native overlays for cl-stack; depends on stock cl+ssl
+      license: MIT
+      depends-on: cl+ssl
+      provides: cl-stack-ssl
+      cffi-libraries: libssl libcrypto
+      source-paths: |
+        cl-stack-ssl.asd
+        src
+        LICENSE
+        README.md
+        NOTICE
+    secrets: inherit

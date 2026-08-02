@@ -1,0 +1,14 @@
+/lib/
+/build/
+/native-bundle/
+/native-artifacts/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.tar.gz
+.qlot/
+*.fasl
+*~
+.DS_Store
