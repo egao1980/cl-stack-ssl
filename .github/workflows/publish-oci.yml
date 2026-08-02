@@ -136,11 +136,18 @@ jobs:
       - name: Stage Lisp-only source tree
         run: |
           # Lisp sources only in source-dir; natives referenced by absolute path for overlays.
+          VERSION="${{ inputs.version }}"
+          if [ -z "$VERSION" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          [ -z "$VERSION" ] && VERSION="${OPENSSL_VERSION_DEFAULT}"
           STAGING="${RUNNER_TEMP}/cl-stack-ssl-src"
           rm -rf "$STAGING"
           mkdir -p "$STAGING/src"
           cp LICENSE NOTICE README.md cl-stack-ssl.asd "$STAGING/"
           cp -a src/. "$STAGING/src/"
+          sed -i 's/:version "[^"]*"/:version "'"${VERSION}"'"/' "$STAGING/cl-stack-ssl.asd"
+          sed -i 's/(defconstant +openssl-version+ "[^"]*"/(defconstant +openssl-version+ "'"${VERSION}"'"/' "$STAGING/src/setup.lisp"
           echo "STAGING=$STAGING" >> "$GITHUB_ENV"
           echo "LIB_ROOT=${GITHUB_WORKSPACE}/lib" >> "$GITHUB_ENV"
 
@@ -251,4 +258,4 @@ jobs:
           NAMESPACE="${{ github.repository_owner }}/cl-systems"
           NAMESPACE=$(echo "$NAMESPACE" | tr '[:upper:]' '[:lower:]')
           oras manifest fetch "${REGISTRY}/${NAMESPACE}/cl-stack-ssl:${VERSION}" \
-            --registry-config <(echo "{\"auths\":{\"ghcr.io\":{\"username\":\"${{ github.actor }}\",\"password\":\"${GITHUB_TOKEN}\"}}}")
+            --registry-config <(echo "{\"auths\":{\"${REGISTRY}\":{\"username\":\"${{ github.actor }}\",\"password\":\"${GITHUB_TOKEN}\"}}}")

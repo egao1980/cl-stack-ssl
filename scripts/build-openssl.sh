@@ -85,11 +85,13 @@ elif [[ "$os" == "darwin" ]]; then
     if [[ -f "$OUT/libssl.dylib" || -L "$OUT/libssl.dylib" ]]; then
       real_ssl="$(cd "$OUT" && realpath libssl.dylib 2>/dev/null || readlink libssl.dylib || true)"
       real_crypto="$(cd "$OUT" && realpath libcrypto.dylib 2>/dev/null || readlink libcrypto.dylib || true)"
-      if [[ -n "${real_ssl:-}" && -f "$OUT/$real_ssl" && -n "${real_crypto:-}" ]]; then
+      [[ -n "${real_ssl:-}" && "$real_ssl" != /* ]] && real_ssl="$OUT/$real_ssl"
+      [[ -n "${real_crypto:-}" && "$real_crypto" != /* ]] && real_crypto="$OUT/$real_crypto"
+      if [[ -n "${real_ssl:-}" && -f "$real_ssl" && -n "${real_crypto:-}" ]]; then
         install_name_tool -change \
           "$BUILD/prefix/lib/$(basename "$real_crypto")" \
           "@loader_path/$(basename "$real_crypto")" \
-          "$OUT/$real_ssl" 2>/dev/null || true
+          "$real_ssl" 2>/dev/null || true
       fi
     fi
   fi
