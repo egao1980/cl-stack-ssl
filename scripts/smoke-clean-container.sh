@@ -65,6 +65,7 @@ docker run --rm --platform linux/amd64 \
   -e DEBIAN_FRONTEND=noninteractive \
   -e CL_STACK_SSL_ROOT=/opt/cl-stack-ssl \
   -e LD_LIBRARY_PATH=/opt/cl-stack-ssl/native \
+  -e OPENSSL_EXPECT="$VERSION" \
   -v "$PKG:/opt/cl-stack-ssl:ro" \
   -v "$QL:/ql:ro" \
   -v "$SMOKE_LISP:/opt/smoke.lisp:ro" \
