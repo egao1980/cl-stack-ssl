@@ -165,16 +165,13 @@ jobs:
     permissions:
       contents: read
       packages: write
-    uses: ./.github/workflows/publish-native-package.yml
+    uses: egao1980/cl-repository/.github/workflows/publish-native-package.yml@main
     with:
       package-name: cl-stack-ssl
       version: ${{ needs.resolve-version.outputs.version }}
       registry: ${{ inputs.registry || 'ghcr.io' }}
-      description: OpenSSL native overlays for cl-stack; depends on stock cl+ssl
-      license: MIT
-      depends-on: cl+ssl
-      provides: cl-stack-ssl
-      cffi-libraries: libssl libcrypto
+      packager-tag: "0.10.0"
+      source-overlay-artifact: synced-source
       source-paths: |
         cl-stack-ssl.asd
         src
