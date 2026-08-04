@@ -41,7 +41,7 @@ jobs:
 
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install build deps (Linux)
         if: matrix.os == 'linux'
@@ -121,7 +121,7 @@ jobs:
           Copy-Item -Path "lib\${{ matrix.os }}-${{ matrix.arch }}\*" -Destination native-bundle -Recurse -Force
 
       - name: Upload native artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: native-${{ matrix.os }}-${{ matrix.arch }}
           path: native-bundle/
@@ -145,7 +145,7 @@ jobs:
     needs: resolve-version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Sync package version into source
         run: |
@@ -153,7 +153,7 @@ jobs:
           ./scripts/sync-package-version.sh "${{ needs.resolve-version.outputs.version }}"
 
       - name: Upload synced source overlay
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: synced-source
           path: |
