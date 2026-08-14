@@ -1,0 +1,62 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: cl-stack-ssl-test-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SBCL_VERSION: 2.6.7
+  ROSWELL_VERSION: "26.02.116"
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: egao1980/cl-repository/.github/actions/setup-client@main
+
+      - name: Install OpenSSL (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: brew list openssl@3 >/dev/null 2>&1 || brew install openssl@3
+
+      - name: Install OpenSSL (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          choco install openssl --no-progress -y
+          for d in "/c/Program Files/OpenSSL-Win64/bin" "/c/Program Files/OpenSSL/bin"; do
+            if [ -d "$d" ]; then
+              cygpath -w "$d" >> "$GITHUB_PATH"
+            fi
+          done
+
+      - uses: egao1980/cl-repository/.github/actions/setup-roswell@main
+        with:
+          sbcl-version: ${{ env.SBCL_VERSION }}
+          roswell-version: ${{ env.ROSWELL_VERSION }}
+
+      - name: cl-repo install deps
+        shell: bash
+        run: |
+          ros -l scripts/ci-install.lisp -q
+
+      - name: Test
+        shell: bash
+        run: |
+          ros -l scripts/ci-test.lisp -q
