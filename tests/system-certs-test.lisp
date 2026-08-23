@@ -43,8 +43,8 @@
      (lambda ()
        (let ((found (discover-system-cert-store)))
          (ok (%source-of found :env-file))
-         (ok (equal (getf (%source-of found :env-file) :path)
-                    (uiop:native-namestring path))))))))
+         (ok (equal (probe-file (getf (%source-of found :env-file) :path))
+                    (probe-file path))))))))
 
 (deftest ensure-ssl-still-reports-version
   (multiple-value-bind (ok version) (ensure-ssl)

@@ -47,16 +47,34 @@
     (when (and value (plusp (length value)))
       value)))
 
+(defun %parse-path (path)
+  (cond
+    ((pathnamep path) path)
+    ((and (stringp path) (plusp (length path)))
+     ;; Env vars are OS-native (C:\... on Windows). PARSE-NATIVE-NAMESTRING
+     ;; keeps the drive; PATHNAME + ENSURE-PATHNAME :DEFAULTS can yield D:C:\...
+     (or (ignore-errors (uiop:parse-native-namestring path))
+         (pathname path)))
+    (t (pathname path))))
+
 (defun %native-path (path)
-  (uiop:native-namestring (uiop:ensure-pathname path :defaults *default-pathname-defaults*)))
+  (let ((p (%parse-path path)))
+    (uiop:native-namestring
+     (if (uiop:absolute-pathname-p p)
+         p
+         (merge-pathnames p)))))
 
 (defun %existing-file (path)
-  (when (and path (uiop:file-exists-p path))
-    (%native-path path)))
+  (when path
+    (let ((p (%parse-path path)))
+      (when (uiop:file-exists-p p)
+        (%native-path p)))))
 
 (defun %existing-dir (path)
-  (when (and path (uiop:directory-exists-p path))
-    (%native-path (uiop:ensure-directory-pathname path))))
+  (when path
+    (let ((p (%parse-path path)))
+      (when (uiop:directory-exists-p p)
+        (%native-path (uiop:ensure-directory-pathname p))))))
 
 (defun %split-path-list (value)
   (when (and value (plusp (length value)))
