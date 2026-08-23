@@ -3,11 +3,13 @@
   :description "OpenSSL native overlays for cl-stack; depends on stock cl+ssl"
   :author "egao1980"
   :license "MIT"
-  :depends-on ("cl+ssl")
+  :depends-on ("cffi" "cl+ssl")
   :serial t
   :pathname "src"
   :components ((:file "package")
+               (:file "system-certs")
                (:file "setup"))
+  :in-order-to ((test-op (test-op "cl-stack-ssl/tests")))
   :properties
   (:cl-repo
    (:cffi-libraries ("libssl" "libcrypto")
@@ -29,3 +31,13 @@
       :layers ((:role "native-library"
                 :files (("lib/windows-amd64/libssl-3-x64.dll" . "libssl-3-x64.dll")
                         ("lib/windows-amd64/libcrypto-3-x64.dll" . "libcrypto-3-x64.dll")))))))))
+
+(defsystem "cl-stack-ssl/tests"
+  :depends-on ("cl-stack-ssl" "rove" "usocket")
+  :pathname "tests"
+  :serial t
+  :components ((:file "package")
+               (:file "system-certs-test"))
+  :perform (test-op (o c)
+             (unless (symbol-call :rove :run c)
+               (error "tests failed for ~A" (component-name c)))))

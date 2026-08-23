@@ -6,9 +6,11 @@
   "OpenSSL release this package version tracks (must match ASDF :version / OCI tag).")
 
 (defun ensure-ssl ()
-  "Confirm cl+ssl is loaded. Overlay `native/` must win over distro libssl —
+  "Confirm cl+ssl is loaded and the OS trust store is installed on the
+   global SSL_CTX. Overlay `native/` must win over distro libssl —
    set LD_LIBRARY_PATH (or DYLD_LIBRARY_PATH) to the install's native/ *before*
    starting the Lisp process when the image already has libssl."
   (unless (find-package :cl+ssl)
     (error "cl+ssl is not loaded; load system cl-stack-ssl via ASDF/cl-repository"))
+  (ensure-system-cert-store :errorp nil)
   (values t +openssl-version+))

@@ -24,7 +24,9 @@
 
 (call-with-ci-muffles
  (lambda ()
-   (cl-repo:ensure-system-dependencies "cl-stack-ssl")))
+   (cl-repo:ensure-system-dependencies "cl-stack-ssl"
+     :also-tests t
+     :sources '(("rove" :ql)))))
 
 (format t "~&; ci: install phase done~%")
 (uiop:quit 0)

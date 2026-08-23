@@ -22,6 +22,27 @@ depends on stock [cl+ssl](https://github.com/cl-plus-ssl/cl-plus-ssl) for the Li
 
 Optional diagnostic: `(cl-stack-ssl:ensure-ssl)` → `(values t "3.4.1")`.
 
+Loading the system installs the **OS trust store** on cl+ssl's global
+`SSL_CTX` (overlay OpenSSL has no compiled-in `OPENSSLDIR` on the
+consumer machine). `SSL_CERT_FILE` / `SSL_CERT_DIR` win when set.
+
+| Platform | Source |
+|----------|--------|
+| Linux / Unix | `ca-certificates.crt` / hashed `/etc/ssl/certs` (and siblings) |
+| macOS | Keychain anchors + user/admin trust settings (PEM fallback) |
+| Windows | CryptoAPI `ROOT` + OpenSSL 3.2+ `org.openssl.winstore:` |
+
+```lisp
+(cl-stack-ssl:discover-system-cert-store)
+;; => ((:SOURCE :KEYCHAIN :PATH "…" :COUNT 150) …)
+
+(cl-stack-ssl:ensure-system-cert-store) ; also run from ASDF load / ENSURE-SSL
+(cl-stack-ssl:ssl-ctx-use-system-cert-store ctx) ; extra SSL_CTX
+```
+
+Skip the load-time hook: `CL_STACK_SSL_NO_SYSTEM_CERTS=1` or
+`(setf cl-stack-ssl:*auto-system-cert-store* nil)` before load.
+
 Clean container: Roswell/SBCL, **no** `libssl-dev` — install from GHCR, then load.
 If the image already has distro `libssl` (common), put the package `native/` on
 `LD_LIBRARY_PATH` **before** starting SBCL so cl+ssl does not bind the system lib:
