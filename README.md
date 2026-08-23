@@ -69,7 +69,7 @@ Tag `v<openssl-ver>` or `workflow_dispatch` → `.github/workflows/publish-oci.y
 | `linux/amd64` | `ubuntu-latest` |
 | `linux/arm64` | `ubuntu-24.04-arm` |
 | `darwin/arm64` | `macos-latest` |
-| `windows/amd64` | self-hosted `[self-hosted, Windows, X64, overlay]` |
+| `windows/amd64` | `windows-latest` |
 
 Windows build: `scripts/build-openssl.ps1` (VS Build Tools + Strawberry Perl via `winget` in CI).
 
