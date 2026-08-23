@@ -34,10 +34,10 @@ jobs:
           - os: darwin
             arch: arm64
             runner: macos-latest
-          # Self-hosted Windows worker (labels from Install-GhaRunner.ps1).
+          # Hosted — self-hosted [overlay] runner is often offline; overlay-ci.md default.
           - os: windows
             arch: amd64
-            runner: [self-hosted, Windows, X64, overlay]
+            runner: windows-latest
 
     runs-on: ${{ matrix.runner }}
     steps:
