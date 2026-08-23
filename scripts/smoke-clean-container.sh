@@ -37,7 +37,7 @@ cat >"$SMOKE_LISP" <<'EOF'
        (make-ssl (find-symbol "MAKE-SSL-CLIENT-STREAM" :cl+ssl))
        (sock (funcall connect "example.com" 443 :element-type '(unsigned-byte 8)))
        (ssl (funcall make-ssl (funcall stream sock) :hostname "example.com"
-                     :verify nil :external-format '(:utf-8 :eol-style :crlf))))
+                     :verify t :external-format '(:utf-8 :eol-style :crlf))))
   (unwind-protect
        (progn
          (format ssl "GET / HTTP/1.1~%Host: example.com~%Connection: close~%~%")

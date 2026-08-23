@@ -29,12 +29,17 @@
 
 (call-with-ci-muffles
  (lambda ()
+   (dolist (n '("rove"))
+     (unless (asdf:find-system n nil)
+       (format t "~&; ci: ql fallback ~a~%" n)
+       (ql:quickload n :silent t)))
    (asdf:load-system "cl-stack-ssl")
    (multiple-value-bind (ok version)
        (uiop:symbol-call :cl-stack-ssl :ensure-ssl)
      (unless ok
        (error "ensure-ssl returned NIL"))
-     (format t "~&; ci: cl-stack-ssl loaded (tracks OpenSSL ~a)~%" version))))
+     (format t "~&; ci: cl-stack-ssl loaded (tracks OpenSSL ~a)~%" version))
+   (asdf:test-system "cl-stack-ssl")))
 
 (format t "~&; ci: tests ok~%")
 (uiop:quit 0)
