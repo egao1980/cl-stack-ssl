@@ -51,12 +51,12 @@ jobs:
           sbcl-version: ${{ env.SBCL_VERSION }}
           roswell-version: ${{ env.ROSWELL_VERSION }}
 
-      - name: cl-repo install deps
-        shell: bash
-        run: |
-          ros -l scripts/ci-install.lisp -q
+      - uses: egao1980/cl-repository/.github/actions/ci@main
+        with:
+          phase: install
+          system: cl-stack-ssl
 
-      - name: Test
-        shell: bash
-        run: |
-          ros -l scripts/ci-test.lisp -q
+      - uses: egao1980/cl-repository/.github/actions/ci@main
+        with:
+          phase: test
+          system: cl-stack-ssl
