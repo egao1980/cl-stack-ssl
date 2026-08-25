@@ -31,7 +31,7 @@
       :layers ((:role "native-library"
                 :files (("lib/windows-amd64/libssl-3-x64.dll" . "libssl-3-x64.dll")
                         ("lib/windows-amd64/libcrypto-3-x64.dll" . "libcrypto-3-x64.dll"))))))
-    :ci (:sources (("rove" :ql)))))
+    :ci (:sources (("rove" :ql))))))
 
 (defsystem "cl-stack-ssl/tests"
   :depends-on ("cl-stack-ssl" "rove" "usocket")
