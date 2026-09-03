@@ -170,7 +170,6 @@ jobs:
       package-name: cl-stack-ssl
       version: ${{ needs.resolve-version.outputs.version }}
       registry: ${{ inputs.registry || 'ghcr.io' }}
-      packager-tag: "0.10.0"
       source-overlay-artifact: synced-source
       source-paths: |
         cl-stack-ssl.asd
