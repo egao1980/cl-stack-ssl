@@ -2,7 +2,7 @@
 
 ;; defparameter: SBCL DEFCONSTANT on strings trips DEFCONSTANT-UNEQL on reload
 ;; (compile-time vs load-time string objects are EQUAL but not EQL).
-(defparameter +openssl-version+ "3.4.1"
+(defparameter +openssl-version+ "3.5.9"
   "OpenSSL release this package version tracks (must match ASDF :version / OCI tag).")
 
 (defun ensure-ssl ()

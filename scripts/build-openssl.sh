@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Build shared OpenSSL (libssl + libcrypto) into lib/<os>-<arch>/.
 # Usage: ./scripts/build-openssl.sh
-# Env: OPENSSL_VERSION (default 3.4.1), DEST_DIR (optional override)
+# Env: OPENSSL_VERSION (default 3.5.9), DEST_DIR (optional override)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OPENSSL_VERSION="${OPENSSL_VERSION:-3.4.1}"
+OPENSSL_VERSION="${OPENSSL_VERSION:-3.5.9}"
 JOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
 
 uname_s="$(uname -s)"

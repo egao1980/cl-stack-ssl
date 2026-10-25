@@ -1,11 +1,11 @@
 # Build shared OpenSSL (libssl + libcrypto) into lib/windows-amd64/ for cl+ssl.
 # Requires: Visual Studio Build Tools (nmake/cl), Perl (Strawberry), curl.
 # Usage: .\scripts\build-openssl.ps1
-# Env: OPENSSL_VERSION (default 3.4.1), DEST_DIR (optional)
+# Env: OPENSSL_VERSION (default 3.5.9), DEST_DIR (optional)
 $ErrorActionPreference = "Stop"
 
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$OpenSslVersion = if ($env:OPENSSL_VERSION) { $env:OPENSSL_VERSION } else { "3.4.1" }
+$OpenSslVersion = if ($env:OPENSSL_VERSION) { $env:OPENSSL_VERSION } else { "3.5.9" }
 $Os = "windows"
 $Arch = "amd64"
 $Out = if ($env:DEST_DIR) { $env:DEST_DIR } else { Join-Path $Root "lib\$Os-$Arch" }

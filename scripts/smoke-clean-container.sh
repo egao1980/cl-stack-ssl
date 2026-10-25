@@ -3,7 +3,7 @@
 # Fast path: reuse /tmp/cl-stack-ssl-smoke-cache/{ql,pkg} across runs.
 set -euo pipefail
 
-VERSION="${1:-3.4.1}"
+VERSION="${1:-3.5.9}"
 IMAGE="ghcr.io/egao1980/cl-systems/cl-stack-ssl:${VERSION}"
 CACHE="${CACHE:-/tmp/cl-stack-ssl-smoke-cache}"
 PKG="$CACHE/pkg/cl-stack-ssl-${VERSION}"
@@ -26,7 +26,7 @@ cat >"$SMOKE_LISP" <<'EOF'
                     :inherit-configuration))
 (ql:quickload '("cffi" "cl-stack-ssl" "usocket") :silent t)
 (cffi:defcfun ("OpenSSL_version" %openssl-version) :string (type :int))
-(let* ((expect (or (uiop:getenv "OPENSSL_EXPECT") "3.4.1"))
+(let* ((expect (or (uiop:getenv "OPENSSL_EXPECT") "3.5.9"))
        (v (%openssl-version 0)))
   (format t "~&OpenSSL_version => ~S (expect ~A)~%" v expect)
   (unless (search (format nil "OpenSSL ~A" expect) v)
