@@ -20,7 +20,7 @@ depends on stock [cl+ssl](https://github.com/cl-plus-ssl/cl-plus-ssl) for the Li
 ;; then use cl+ssl as usual
 ```
 
-Optional diagnostic: `(cl-stack-ssl:ensure-ssl)` → `(values t "3.4.1")`.
+Optional diagnostic: `(cl-stack-ssl:ensure-ssl)` → `(values t "3.5.9")`.
 
 Loading the system installs the **OS trust store** on cl+ssl's global
 `SSL_CTX` (overlay OpenSSL has no compiled-in `OPENSSLDIR` on the
@@ -48,7 +48,7 @@ If the image already has distro `libssl` (common), put the package `native/` on
 `LD_LIBRARY_PATH` **before** starting SBCL so cl+ssl does not bind the system lib:
 
 ```bash
-export LD_LIBRARY_PATH="$HOME/.local/share/cl-systems/cl-stack-ssl-3.4.1/native${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="$HOME/.local/share/cl-systems/cl-stack-ssl-3.5.9/native${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 ```
 
 Smoke (linux/amd64): `scripts/smoke-clean-container.sh` (expects `oras` + Docker).
@@ -56,7 +56,7 @@ Smoke (linux/amd64): `scripts/smoke-clean-container.sh` (expects `oras` + Docker
 ## Build natives locally
 
 ```bash
-./scripts/build-openssl.sh          # OPENSSL_VERSION=3.4.1 by default
+./scripts/build-openssl.sh          # OPENSSL_VERSION=3.5.9 by default
 # → lib/<os>-<arch>/libssl.* libcrypto.* (+ versioned sonames / Windows DLLs)
 ```
 

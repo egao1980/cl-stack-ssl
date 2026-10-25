@@ -1,5 +1,5 @@
 (defsystem "cl-stack-ssl"
-  :version "3.4.1"
+  :version "3.5.9"
   :description "OpenSSL native overlays for cl-stack; depends on stock cl+ssl"
   :author "egao1980"
   :license "MIT"
