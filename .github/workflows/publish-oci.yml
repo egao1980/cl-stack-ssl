@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Package / OpenSSL version (default: from tag or 3.5.9)"
+        description: "Package / OpenSSL version (default: from tag or 3.5.9.1; OpenSSL = first three parts)"
         required: false
         default: ""
       registry:
@@ -16,7 +16,7 @@ on:
         default: "ghcr.io"
 
 env:
-  OPENSSL_VERSION_DEFAULT: "3.5.9"
+  OPENSSL_VERSION_DEFAULT: "3.5.9.1"
 
 jobs:
   build:
