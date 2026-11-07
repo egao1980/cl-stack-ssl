@@ -63,13 +63,15 @@ jobs:
             $V = $env:GITHUB_REF_NAME.Substring(1)
           }
           if ([string]::IsNullOrEmpty($V)) { $V = $env:OPENSSL_VERSION_DEFAULT }
+          $O = (($V -split '\.')[0..2]) -join '.'
           Add-Content -Path $env:GITHUB_OUTPUT -Value "version=$V"
-          Write-Host "OpenSSL/package version=$V"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "openssl=$O"
+          Write-Host "package version=$V OpenSSL=$O"
 
       - name: Build OpenSSL shared libs (Unix)
         if: matrix.os != 'windows'
         env:
-          OPENSSL_VERSION: ${{ steps.ver.outputs.version }}
+          OPENSSL_VERSION: ${{ steps.ver.outputs.openssl }}
         run: |
           chmod +x scripts/build-openssl.sh
           ./scripts/build-openssl.sh
@@ -108,7 +110,7 @@ jobs:
         if: matrix.os == 'windows'
         shell: pwsh
         env:
-          OPENSSL_VERSION: ${{ steps.ver.outputs.version }}
+          OPENSSL_VERSION: ${{ steps.ver.outputs.openssl }}
         run: |
           # Ensure Strawberry is visible even if install step was a no-op / cached.
           foreach ($p in @("C:\Strawberry\perl\bin", "C:\Strawberry\c\bin")) {

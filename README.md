@@ -22,6 +22,10 @@ depends on stock [cl+ssl](https://github.com/cl-plus-ssl/cl-plus-ssl) for the Li
 
 Optional diagnostic: `(cl-stack-ssl:ensure-ssl)` → `(values t "3.5.9")`.
 
+Loading the system first points cl+ssl at the overlay's `libssl` / `libcrypto` (system `cl-stack-ssl/paths`, loaded before cl+ssl), so a distro or Homebrew OpenSSL never wins. This matters on macOS, where Homebrew's `openssl` is now OpenSSL 4, which removed functions cl+ssl calls (`ASN1_STRING_data`). Set `CL_STACK_SSL_SYSTEM_OPENSSL=1` to use the system library instead. If cl+ssl was loaded before cl-stack-ssl, its choice stands and a warning says so.
+
+Package versions are `<openssl>[.<packaging revision>]`: 3.5.9.1 ships OpenSSL 3.5.9.
+
 Loading the system installs the **OS trust store** on cl+ssl's global
 `SSL_CTX` (overlay OpenSSL has no compiled-in `OPENSSLDIR` on the
 consumer machine). `SSL_CERT_FILE` / `SSL_CERT_DIR` win when set.

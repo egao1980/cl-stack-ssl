@@ -83,3 +83,15 @@
                (ok (search "HTTP/" (read-line ssl) :test #'char-equal)))
           (ignore-errors (close ssl))
           (ignore-errors (usocket:socket-close sock))))))
+
+(deftest cl+ssl-uses-the-overlay-openssl
+  (let ((ssl (cl-stack-ssl/paths:overlay-library-files)))
+    (if (null ssl)
+        (ok t "no overlay libraries in this tree (system OpenSSL in use)")
+        (let ((lib (find "LIBSSL" (cffi:list-foreign-libraries)
+                         :key (lambda (l) (symbol-name (cffi:foreign-library-name l))) :test #'string=)))
+          (ok lib)
+          (ok (equal (namestring (cffi:foreign-library-pathname lib)) (namestring ssl))
+              "libssl is the overlay's")
+          ;; a call cl+ssl makes on every handshake resolves
+          (ok (cl+ssl::openssl-is-at-least 3 0))))))

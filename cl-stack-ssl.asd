@@ -1,9 +1,10 @@
 (defsystem "cl-stack-ssl"
-  :version "3.5.9"
+  :version "3.5.9.1"
   :description "OpenSSL native overlays for cl-stack; depends on stock cl+ssl"
   :author "egao1980"
   :license "MIT"
-  :depends-on ("cffi" "cl+ssl")
+  ;; cl-stack-ssl/paths must load before cl+ssl: it tells cl+ssl which OpenSSL to open
+  :depends-on ("cffi" "cl-stack-ssl/paths" "cl+ssl")
   :serial t
   :pathname "src"
   :components ((:file "package")
@@ -31,6 +32,12 @@
       :layers ((:role "native-library"
                 :files (("lib/windows-amd64/libssl-3-x64.dll" . "libssl-3-x64.dll")
                         ("lib/windows-amd64/libcrypto-3-x64.dll" . "libcrypto-3-x64.dll")))))))))
+
+(defsystem "cl-stack-ssl/paths"
+  :description "Points cl+ssl at the overlay OpenSSL; loaded before cl+ssl"
+  :depends-on ("cffi" "cl+ssl/config")
+  :pathname "src"
+  :components ((:file "paths")))
 
 (defsystem "cl-stack-ssl/tests"
   :depends-on ("cl-stack-ssl" "rove" "usocket")
