@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Package / OpenSSL version (default: from tag or 3.5.9.1; OpenSSL = first three parts)"
+        description: "Package / OpenSSL version (input, else v* tag, else .asd :version; OpenSSL = first three parts)"
         required: false
         default: ""
       registry:
@@ -15,11 +15,33 @@ on:
         required: false
         default: "ghcr.io"
 
-env:
-  OPENSSL_VERSION_DEFAULT: "3.5.9.1"
-
 jobs:
+  # Package version = OpenSSL version + package revision. Input, else the v*
+  # tag, else the .asd :version; OpenSSL builds from the first three parts.
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      openssl: ${{ steps.ver.outputs.openssl }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: ver
+        shell: bash
+        run: |
+          V="${{ inputs.version }}"
+          if [ -z "$V" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            V="${GITHUB_REF_NAME#v}"
+          fi
+          if [ -z "$V" ]; then
+            V="$(sed -nE 's/^[[:space:]]*:version[[:space:]]+"([^"]+)".*/\1/p' cl-stack-ssl.asd | head -1)"
+          fi
+          [ -n "$V" ] || { echo "could not resolve package version" >&2; exit 1; }
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "openssl=$(echo "$V" | cut -d. -f1-3)" >> "$GITHUB_OUTPUT"
+          echo "package version=$V"
+
   build:
+    needs: resolve-version
     strategy:
       fail-fast: false
       matrix:
@@ -53,25 +75,10 @@ jobs:
         if: matrix.os == 'darwin'
         run: brew install perl || true
 
-      # pwsh on all OSes — Git Bash on Windows mangles $GITHUB_OUTPUT paths.
-      - name: Resolve OpenSSL version
-        id: ver
-        shell: pwsh
-        run: |
-          $V = "${{ inputs.version }}"
-          if ([string]::IsNullOrEmpty($V) -and $env:GITHUB_REF_NAME -like 'v*') {
-            $V = $env:GITHUB_REF_NAME.Substring(1)
-          }
-          if ([string]::IsNullOrEmpty($V)) { $V = $env:OPENSSL_VERSION_DEFAULT }
-          $O = (($V -split '\.')[0..2]) -join '.'
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "version=$V"
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "openssl=$O"
-          Write-Host "package version=$V OpenSSL=$O"
-
       - name: Build OpenSSL shared libs (Unix)
         if: matrix.os != 'windows'
         env:
-          OPENSSL_VERSION: ${{ steps.ver.outputs.openssl }}
+          OPENSSL_VERSION: ${{ needs.resolve-version.outputs.openssl }}
         run: |
           chmod +x scripts/build-openssl.sh
           ./scripts/build-openssl.sh
@@ -110,7 +117,7 @@ jobs:
         if: matrix.os == 'windows'
         shell: pwsh
         env:
-          OPENSSL_VERSION: ${{ steps.ver.outputs.openssl }}
+          OPENSSL_VERSION: ${{ needs.resolve-version.outputs.openssl }}
         run: |
           # Ensure Strawberry is visible even if install step was a no-op / cached.
           foreach ($p in @("C:\Strawberry\perl\bin", "C:\Strawberry\c\bin")) {
@@ -128,42 +135,8 @@ jobs:
           name: native-${{ matrix.os }}-${{ matrix.arch }}
           path: native-bundle/
 
-  resolve-version:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.ver.outputs.version }}
-    steps:
-      - id: ver
-        shell: bash
-        run: |
-          V="${{ inputs.version }}"
-          if [ -z "$V" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
-            V="${GITHUB_REF_NAME#v}"
-          fi
-          [ -z "$V" ] && V="${OPENSSL_VERSION_DEFAULT}"
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-
-  prepare-source:
-    needs: resolve-version
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Sync package version into source
-        run: |
-          chmod +x scripts/sync-package-version.sh
-          ./scripts/sync-package-version.sh "${{ needs.resolve-version.outputs.version }}"
-
-      - name: Upload synced source overlay
-        uses: actions/upload-artifact@v6
-        with:
-          name: synced-source
-          path: |
-            cl-stack-ssl.asd
-            src
-
   publish:
-    needs: [build, resolve-version, prepare-source]
+    needs: [build, resolve-version]
     permissions:
       contents: read
       packages: write
@@ -172,7 +145,6 @@ jobs:
       package-name: cl-stack-ssl
       version: ${{ needs.resolve-version.outputs.version }}
       registry: ${{ inputs.registry || 'ghcr.io' }}
-      source-overlay-artifact: synced-source
       source-paths: |
         cl-stack-ssl.asd
         src
