@@ -56,6 +56,19 @@
   (let ((found (discover-system-cert-store)))
     (ng (%source-of found :env-file))))
 
+(deftest inherited-staged-file-is-not-an-override
+  "A child image inherits SSL_CERT_FILE and the staged marker, not the Lisp variable."
+  (uiop:with-temporary-file (:pathname path :type "pem")
+    (let ((native (uiop:native-namestring path))
+          (cl-stack-ssl::*staged-ssl-cert-file* nil))
+      (%call-with-env
+       "SSL_CERT_FILE" native
+       (lambda ()
+         (%call-with-env
+          "CL_STACK_SSL_STAGED_SSL_CERT_FILE" native
+          (lambda ()
+            (ng (%source-of (discover-system-cert-store) :env-file)))))))))
+
 (deftest pem-cert-count-positive
   (let ((desc (or (%source-of *system-cert-store* :keychain)
                   (%source-of *system-cert-store* :windows-root)

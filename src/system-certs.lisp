@@ -103,9 +103,14 @@
           collect `(:source :dir :path ,existing)))
 
 (defun %user-env (name staged)
-  "SSL_CERT_* set by the user, ignoring values we staged ourselves."
-  (let ((value (%env name)))
-    (when (and value (not (and staged (string= value staged))))
+  "SSL_CERT_* set by the user, ignoring values we staged ourselves.
+   STAGED is this image's staged value; CL_STACK_SSL_STAGED_<NAME> carries
+   it to child processes, which inherit NAME but not the Lisp variable."
+  (let ((value (%env name))
+        (inherited (%env (concatenate 'string "CL_STACK_SSL_STAGED_" name))))
+    (when (and value
+               (not (and staged (string= value staged)))
+               (not (and inherited (string= value inherited))))
       value)))
 
 (defun %env-descriptors ()
@@ -385,6 +390,7 @@
                 :message (format nil "CA file missing: ~A" path)))
        (when (and setenv (not (%user-env "SSL_CERT_FILE" *staged-ssl-cert-file*)))
          (setf (uiop:getenv "SSL_CERT_FILE") path
+               (uiop:getenv "CL_STACK_SSL_STAGED_SSL_CERT_FILE") path
                *staged-ssl-cert-file* path))
        (cl+ssl::ssl-ctx-set-verify-location ctx path)
        descriptor)
@@ -394,6 +400,7 @@
                 :message (format nil "CA directory missing: ~A" path)))
        (when (and setenv (not (%user-env "SSL_CERT_DIR" *staged-ssl-cert-dir*)))
          (setf (uiop:getenv "SSL_CERT_DIR") path
+               (uiop:getenv "CL_STACK_SSL_STAGED_SSL_CERT_DIR") path
                *staged-ssl-cert-dir* path))
        (cl+ssl::ssl-ctx-set-verify-location ctx path)
        descriptor)
