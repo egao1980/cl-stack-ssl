@@ -52,9 +52,20 @@
     (ok (string= version +openssl-version+))))
 
 (deftest discover-keeps-platform-source
-  "Staging SSL_CERT_FILE for overlay OpenSSL must not look like a user override."
-  (let ((found (discover-system-cert-store)))
-    (ng (%source-of found :env-file))))
+  "Staging SSL_CERT_FILE for overlay OpenSSL must not look like a user override.
+   Starts from a clean environment: the image running the suite (the cl-repo
+   client loads cl-stack-ssl too) may have exported its own SSL_CERT_FILE."
+  (let ((cl-stack-ssl::*staged-ssl-cert-file* nil)
+        (cl-stack-ssl::*staged-ssl-cert-dir* nil)
+        (*system-cert-store* nil))
+    (%call-with-env
+     "SSL_CERT_FILE" nil
+     (lambda ()
+       (%call-with-env
+        "CL_STACK_SSL_STAGED_SSL_CERT_FILE" nil
+        (lambda ()
+          (ensure-system-cert-store :errorp nil)
+          (ng (%source-of (discover-system-cert-store) :env-file))))))))
 
 (deftest inherited-staged-file-is-not-an-override
   "A child image inherits SSL_CERT_FILE and the staged marker, not the Lisp variable."
