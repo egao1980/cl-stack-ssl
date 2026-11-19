@@ -52,7 +52,7 @@ A distro `libssl` in the image does not matter: `cl-stack-ssl/paths` hands cl+ss
 the overlay's files by absolute path (`native/`, else `lib/<os>-<arch>/` in a
 checkout). No `LD_LIBRARY_PATH` / `DYLD_LIBRARY_PATH`.
 
-Smoke (linux/amd64): `scripts/smoke-clean-container.sh` (expects `oras` + Docker).
+Smoke (linux/amd64): `scripts/smoke-clean-container.sh [version]` (Docker). It installs the package with cl-repo in the ci-base image, which has the distro `libssl3`, and checks that the overlay OpenSSL is bound and a verified TLS request works.
 
 ## Build natives locally
 
