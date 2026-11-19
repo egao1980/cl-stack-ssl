@@ -15,7 +15,7 @@ depends on stock [cl+ssl](https://github.com/cl-plus-ssl/cl-plus-ssl) for the Li
 ## Consumer
 
 ```lisp
-;; After cl-repository install (init pushes native/ onto CFFI search path):
+;; After `cl-repo sync` / `cl-repo install cl-stack-ssl` (overlay lands in native/):
 (asdf:load-system "cl-stack-ssl")   ; pulls stock cl+ssl — no extra ensure call
 ;; then use cl+ssl as usual
 ```
@@ -48,12 +48,9 @@ Skip the load-time hook: `CL_STACK_SSL_NO_SYSTEM_CERTS=1` or
 `(setf cl-stack-ssl:*auto-system-cert-store* nil)` before load.
 
 Clean container: Roswell/SBCL, **no** `libssl-dev` — install from GHCR, then load.
-If the image already has distro `libssl` (common), put the package `native/` on
-`LD_LIBRARY_PATH` **before** starting SBCL so cl+ssl does not bind the system lib:
-
-```bash
-export LD_LIBRARY_PATH="$HOME/.local/share/cl-systems/cl-stack-ssl-3.5.9/native${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-```
+A distro `libssl` in the image does not matter: `cl-stack-ssl/paths` hands cl+ssl
+the overlay's files by absolute path (`native/`, else `lib/<os>-<arch>/` in a
+checkout). No `LD_LIBRARY_PATH` / `DYLD_LIBRARY_PATH`.
 
 Smoke (linux/amd64): `scripts/smoke-clean-container.sh` (expects `oras` + Docker).
 
