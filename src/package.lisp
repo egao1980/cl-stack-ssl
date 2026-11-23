@@ -8,4 +8,6 @@
            #:system-cert-store-error-message
            #:discover-system-cert-store
            #:ensure-system-cert-store
-           #:ssl-ctx-use-system-cert-store))
+           #:ssl-ctx-use-system-cert-store
+           #:forget-ssl-state
+           #:restore-ssl-state))

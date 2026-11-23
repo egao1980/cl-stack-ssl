@@ -1,5 +1,5 @@
 (defsystem "cl-stack-ssl"
-  :version "3.5.9.3"
+  :version "3.5.9.4"
   :description "OpenSSL native overlays for cl-stack; depends on stock cl+ssl"
   :author "egao1980"
   :license "MIT"
@@ -9,6 +9,7 @@
   :pathname "src"
   :components ((:file "package")
                (:file "system-certs")
+               (:file "image")
                (:file "setup"))
   :in-order-to ((test-op (test-op "cl-stack-ssl/tests")))
   :properties
@@ -44,7 +45,8 @@
   :pathname "tests"
   :serial t
   :components ((:file "package")
-               (:file "system-certs-test"))
+               (:file "system-certs-test")
+               (:file "image-test"))
   :perform (test-op (o c)
              (unless (symbol-call :rove :run c)
                (error "tests failed for ~A" (component-name c)))))

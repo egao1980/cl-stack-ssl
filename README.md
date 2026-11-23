@@ -47,6 +47,16 @@ consumer machine). `SSL_CERT_FILE` / `SSL_CERT_DIR` win when set.
 Skip the load-time hook: `CL_STACK_SSL_NO_SYSTEM_CERTS=1` or
 `(setf cl-stack-ssl:*auto-system-cert-store* nil)` before load.
 
+**Saved images** (`uiop:dump-image`, `save-lisp-and-die`) need nothing extra
+since 3.5.9.4. Before the image is saved, `forget-ssl-state` drops cl+ssl's
+global `SSL_CTX`, `SSL_METHOD` and BIO method, and the trust-store state. These
+are pointers and files of the building process. When the image starts,
+`restore-ssl-state` initializes a new context and installs the trust store
+again. Earlier versions saved the old context, and the first handshake in a
+built executable faulted inside libssl (#23). Do not call `cl+ssl:reload` at
+startup: it reopens OpenSSL through cl+ssl's own search, which on macOS finds
+Homebrew's OpenSSL 4 instead of the overlay.
+
 Clean container: Roswell/SBCL, **no** `libssl-dev` — install from GHCR, then load.
 A distro `libssl` in the image does not matter: `cl-stack-ssl/paths` hands cl+ssl
 the overlay's files by absolute path (`native/`, else `lib/<os>-<arch>/` in a
